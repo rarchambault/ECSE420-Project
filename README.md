@@ -1,14 +1,22 @@
 # ECSE 420 Project
 
-## Installation
+## Microsoft Visual Studio
+* Run `build-VisualStudio2022.bat`
+* double click the `.sln` file that is generated
+* develop your game
+* you are good to go
 
-1. Install [mingw](https://sourceforge.net/projects/mingw/) on your machine and add the `bin` folder to the PATH.
+# Linux Users
+* CD into the build folder
+* run `./premake5 gmake2`
+* CD back to the root
+* run `make`
+* you are good to go
 
-2. Run `build-MinGW-W64.bat` and `build-VisualStudio2022.bat`.
-
-3. Open Visual Studio and Open a `Project/Solution`.
-
-4. Select `ECSE420-Project.sln`.
-
-5. Run the solution.
+# MacOS Users
+* CD into the build folder
+* run `./premake5.osx gmake2`
+* CD back to the root
+* run `make`
+* you are good to go
 
