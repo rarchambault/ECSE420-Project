@@ -1,6 +1,6 @@
-#include <stdlib.h>
 #include "simulation.h"
 #include "constants.h"
+#include <stdlib.h>
 
 
 static Particle particles[MAX_PARTICLES];
@@ -21,25 +21,29 @@ void InitSimulation() {
 
 void UpdateSimulation() {
     for (int i = 0; i < MAX_PARTICLES; i++) {
+        // Update velocity (gravity)
+        particles[i].velocity.y += GRAVITY;
+
+        // Update position
         particles[i].position.x += particles[i].velocity.x;
         particles[i].position.y += particles[i].velocity.y;
 
         // Walls
         if (particles[i].position.x <= MAX_LEFT) {
             particles[i].position.x = MAX_LEFT;
-            particles[i].velocity.x *= -1;
+            particles[i].velocity.x *= -DAMPING_FACTOR;
         }
         if (particles[i].position.x >= MAX_RIGHT) {
             particles[i].position.x = MAX_RIGHT;
-            particles[i].velocity.x *= -1;
+            particles[i].velocity.x *= -DAMPING_FACTOR;
         }
         if (particles[i].position.y <= MAX_TOP) {
             particles[i].position.y = MAX_TOP;
-            particles[i].velocity.y *= -1;
+            particles[i].velocity.y *= -DAMPING_FACTOR;
         }
         if (particles[i].position.y >= MAX_BOTTOM) {
             particles[i].position.y = MAX_BOTTOM;
-            particles[i].velocity.y *= -1;
+            particles[i].velocity.y *= -DAMPING_FACTOR;
         }
     }
 
