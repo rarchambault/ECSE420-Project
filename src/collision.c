@@ -1,11 +1,66 @@
 #include "collision.h"
 #include "constants.h"
+#include "simulation.h"
 #include <raymath.h>
 
-// Simple distance-based collision resolution
-void ResolveCollisions(Particle* particles, int count) {
-    for (int i = 0; i < count; i++) {
-        for (int j = i + 1; j < count; j++) {
+// Resolve collisions with boundaries
+void ResolveBoundaryCollisions(Particle* particle) {
+    if (particle->position.x <= MAX_LEFT) {
+        particle->position.x = MAX_LEFT;
+        particle->velocity.x *= -DAMPING_FACTOR;
+    }
+    if (particle->position.x >= MAX_RIGHT) {
+        particle->position.x = MAX_RIGHT;
+        particle->velocity.x *= -DAMPING_FACTOR;
+    }
+    if (particle->position.y <= MAX_TOP) {
+        particle->position.y = MAX_TOP;
+        particle->velocity.y *= -DAMPING_FACTOR;
+    }
+    if (particle->position.y >= MAX_BOTTOM) {
+        particle->position.y = MAX_BOTTOM;
+        particle->velocity.y *= -DAMPING_FACTOR;
+    }
+}
+
+// Resolve collisions with obstacles
+void ResolveObstacleCollisions(Particle* particle, Obstacle* obstacles) {
+    for (int j = 0; j < NB_OBSTACLES; j++) {
+        Obstacle* obstacle = &obstacles[j];
+
+        if(CheckCollisionCircles(particle->position, particle->radius, obstacle->position, obstacle->radius)) {
+            
+            float dx = particle->position.x - obstacle->position.x;
+            float dy = particle->position.y - obstacle->position.y;
+            float distance = sqrtf(dx * dx + dy * dy);
+
+            // Resolve overlap by pushing the particle away from the obstacle
+            float overlap = (particle->radius + obstacle->radius) - distance;
+            float normX = dx / distance;
+            float normY = dy / distance;
+
+            // Push the particle outside of the obstacle
+            particle->position.x += overlap * normX;
+            particle->position.y += overlap * normY;
+
+            // Reflect the particle's velocity based on the normal direction
+            float dotProduct = (particle->velocity.x * normX) + (particle->velocity.y * normY);
+
+            // Reflect velocity based on the normal direction
+            particle->velocity.x -= 2 * dotProduct * normX;
+            particle->velocity.y -= 2 * dotProduct * normY;
+
+            // Apply the damping factor after collision to reduce velocity
+            particle->velocity.x *= DAMPING_FACTOR;
+            particle->velocity.y *= DAMPING_FACTOR;
+        }
+    }
+}
+
+// Resolve collision between particles
+void ResolveParticleCollisions(Particle* particles) {
+    for (int i = 0; i < NB_PARTICLES; i++) {
+        for (int j = i + 1; j < NB_PARTICLES; j++) {
 
             // Distance and direction between particles
             float dx = particles[j].position.x - particles[i].position.x;

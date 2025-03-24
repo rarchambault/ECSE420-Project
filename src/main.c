@@ -13,10 +13,7 @@ int main() {
     while (!WindowShouldClose()) {
         UpdateSimulation();
 
-        BeginDrawing();
-        ClearBackground(BLACK);
-        RenderParticles();
-        EndDrawing();
+        Render();
     }
 
     CleanupSimulation();

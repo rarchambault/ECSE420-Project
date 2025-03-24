@@ -3,13 +3,21 @@
 #include <stdlib.h>
 
 
-static Particle particles[MAX_PARTICLES];
+static Particle particles[NB_PARTICLES];
+static Obstacle obstacles[NB_OBSTACLES] = {
+    {100, 150, 30.0f},
+    {400, 300, 50.0f},
+	{200, 400, 20.0f},
+    {600, 200, 40.0f},
+	{700, 500, 60.0f},
+    {800, 100, 10.0f}
+};
 
 void InitSimulation() {
-    for (int i = 0; i < MAX_PARTICLES; i++) {
+    for (int i = 0; i < NB_PARTICLES; i++) {
         particles[i].position = (Vector2){
             PARTICLE_RADIUS + ((float)rand() / RAND_MAX) * (WINDOW_WIDTH - 2 * PARTICLE_RADIUS),
-            PARTICLE_RADIUS + ((float)rand() / RAND_MAX) * (WINDOW_HEIGHT - 2 * PARTICLE_RADIUS)
+            PARTICLE_RADIUS + ((float)rand() / RAND_MAX) * (WINDOW_HEIGHT/2 - 2 * PARTICLE_RADIUS)
         };
         particles[i].velocity = (Vector2){
             ((float)rand() / RAND_MAX) * 2.0f - 1.0f,  // Random float between -1.0 and 1.0
@@ -20,7 +28,7 @@ void InitSimulation() {
 }
 
 void UpdateSimulation() {
-    for (int i = 0; i < MAX_PARTICLES; i++) {
+    for (int i = 0; i < NB_PARTICLES; i++) {
         // Update velocity (gravity)
         particles[i].velocity.y += GRAVITY;
 
@@ -28,31 +36,23 @@ void UpdateSimulation() {
         particles[i].position.x += particles[i].velocity.x;
         particles[i].position.y += particles[i].velocity.y;
 
-        // Walls
-        if (particles[i].position.x <= MAX_LEFT) {
-            particles[i].position.x = MAX_LEFT;
-            particles[i].velocity.x *= -DAMPING_FACTOR;
-        }
-        if (particles[i].position.x >= MAX_RIGHT) {
-            particles[i].position.x = MAX_RIGHT;
-            particles[i].velocity.x *= -DAMPING_FACTOR;
-        }
-        if (particles[i].position.y <= MAX_TOP) {
-            particles[i].position.y = MAX_TOP;
-            particles[i].velocity.y *= -DAMPING_FACTOR;
-        }
-        if (particles[i].position.y >= MAX_BOTTOM) {
-            particles[i].position.y = MAX_BOTTOM;
-            particles[i].velocity.y *= -DAMPING_FACTOR;
-        }
+        // Resolve collisions with walls
+        ResolveBoundaryCollisions(&particles[i]);
+
+        // Resolve collisions with obstacles
+        ResolveObstacleCollisions(&particles[i], obstacles);
     }
 
-    // Call collision handling
-    ResolveCollisions(particles, MAX_PARTICLES);
+    // Resolve collisions between particles
+    ResolveParticleCollisions(particles);
 }
 
 Particle* GetParticles() {
     return particles;
+}
+
+Obstacle* GetObstacles() {
+	return obstacles;
 }
 
 void CleanupSimulation() {}
