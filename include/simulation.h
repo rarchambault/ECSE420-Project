@@ -3,7 +3,7 @@
 
 #include "collision.h"
 
-#define MAX_PARTICLES 100
+#define MAX_PARTICLES 500
 
 void InitSimulation();
 void UpdateSimulation();

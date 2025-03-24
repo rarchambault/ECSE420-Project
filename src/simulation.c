@@ -1,13 +1,21 @@
-#include "simulation.h"
 #include <stdlib.h>
+#include "simulation.h"
+#include "constants.h"
+
 
 static Particle particles[MAX_PARTICLES];
 
 void InitSimulation() {
     for (int i = 0; i < MAX_PARTICLES; i++) {
-        particles[i].position = (Vector2){ rand() % 1280, rand() % 800 };
-        particles[i].velocity = (Vector2){ (rand() % 3) - 1.5f, (rand() % 3) - 1.5f };
-        particles[i].radius = 5.0f;
+        particles[i].position = (Vector2){
+            PARTICLE_RADIUS + ((float)rand() / RAND_MAX) * (WINDOW_WIDTH - 2 * PARTICLE_RADIUS),
+            PARTICLE_RADIUS + ((float)rand() / RAND_MAX) * (WINDOW_HEIGHT - 2 * PARTICLE_RADIUS)
+        };
+        particles[i].velocity = (Vector2){
+            ((float)rand() / RAND_MAX) * 2.0f - 1.0f,  // Random float between -1.0 and 1.0
+            ((float)rand() / RAND_MAX) * 2.0f - 1.0f
+        };
+        particles[i].radius = PARTICLE_RADIUS;
     }
 }
 
@@ -16,11 +24,23 @@ void UpdateSimulation() {
         particles[i].position.x += particles[i].velocity.x;
         particles[i].position.y += particles[i].velocity.y;
 
-        // Bounce off walls
-        if (particles[i].position.x <= 0 || particles[i].position.x >= 1280)
+        // Walls
+        if (particles[i].position.x <= MAX_LEFT) {
+            particles[i].position.x = MAX_LEFT;
             particles[i].velocity.x *= -1;
-        if (particles[i].position.y <= 0 || particles[i].position.y >= 800)
+        }
+        if (particles[i].position.x >= MAX_RIGHT) {
+            particles[i].position.x = MAX_RIGHT;
+            particles[i].velocity.x *= -1;
+        }
+        if (particles[i].position.y <= MAX_TOP) {
+            particles[i].position.y = MAX_TOP;
             particles[i].velocity.y *= -1;
+        }
+        if (particles[i].position.y >= MAX_BOTTOM) {
+            particles[i].position.y = MAX_BOTTOM;
+            particles[i].velocity.y *= -1;
+        }
     }
 
     // Call collision handling
