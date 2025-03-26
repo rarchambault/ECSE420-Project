@@ -2,7 +2,7 @@
 #define RENDERER_H
 
 void InitRenderer();
-void RenderParticles();
+void Render();
 void CleanupRenderer();
 
 #endif

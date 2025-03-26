@@ -9,6 +9,13 @@ typedef struct {
     float radius;
 } Particle;
 
-void ResolveCollisions(Particle* particles, int count);
+typedef struct {
+    Vector2 position;
+    float radius;
+} Obstacle;
+
+void ResolveParticleCollisions(Particle* particles);
+void ResolveBoundaryCollisions(Particle* particles);
+void ResolveObstacleCollisions(Particle* particles, Obstacle* obstacles);
 
 #endif

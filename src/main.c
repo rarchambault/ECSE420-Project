@@ -1,9 +1,7 @@
 #include "raylib.h"
 #include "simulation.h"
 #include "renderer.h"
-
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 800
+#include "constants.h"
 
 int main() {
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -15,10 +13,7 @@ int main() {
     while (!WindowShouldClose()) {
         UpdateSimulation();
 
-        BeginDrawing();
-        ClearBackground(BLACK);
-        RenderParticles();
-        EndDrawing();
+        Render();
     }
 
     CleanupSimulation();

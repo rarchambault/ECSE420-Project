@@ -3,11 +3,13 @@
 
 #include "collision.h"
 
-#define MAX_PARTICLES 100
+#define NB_PARTICLES 500
+#define NB_OBSTACLES 6
 
 void InitSimulation();
 void UpdateSimulation();
 void CleanupSimulation();
 Particle* GetParticles();
+Obstacle* GetObstacles();
 
 #endif
