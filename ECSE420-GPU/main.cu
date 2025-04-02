@@ -6,8 +6,8 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+//#include "raylib.h"
 #include "../build/external/raylib-master/src/raylib.h"
-
 
 void saveFramePPM(const char* filename, unsigned char* framebuffer, int width, int height) {
     std::ofstream ofs(filename, std::ios::binary);
@@ -71,10 +71,16 @@ int main() {
     // Simulation loop: Render and save a sequence of frames.
     const int numFrames = 1000;
     
-    SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+    //SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Particle Simulator");
 
-    Texture2D texture = LoadTextureFromImage((Image){ h_framebuffer, WINDOW_WIDTH, WINDOW_HEIGHT, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 });
+    Image image;
+    image.data = h_framebuffer;
+    image.width = WINDOW_WIDTH;
+    image.height = WINDOW_HEIGHT;
+    image.mipmaps = 1;
+    image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    Texture2D texture = LoadTextureFromImage(image);
 
     for (int frame = 0; frame < numFrames; frame++) {
         float deltaTime = 0.016f; // ~60 fps

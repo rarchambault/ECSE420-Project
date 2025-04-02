@@ -3,7 +3,6 @@
 
 #include "Collisions.cuh"  // Uses Particle defined in collisions.h.
 #include "Constants.cuh"
-#include "../build/external/raylib-master/src/raylib.h"
 #include <cuda_runtime.h>
 
 #ifdef __cplusplus

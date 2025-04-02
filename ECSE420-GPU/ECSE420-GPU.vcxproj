@@ -51,7 +51,8 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;winmm.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(CudaToolkitLibDir);..\..\bin\Debug</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -83,15 +84,15 @@
     <CudaCompile Include="Simulation.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\build\build_files\raylib.vcxproj">
-      <Project>{8898ea18-743a-15ef-5df5-284349369c3f}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="Collisions.cuh" />
     <ClInclude Include="Constants.cuh" />
     <ClInclude Include="Render.cuh" />
     <ClInclude Include="Simulation.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\build\build_files\raylib.vcxproj">
+      <Project>{8898ea18-743a-15ef-5df5-284349369c3f}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
