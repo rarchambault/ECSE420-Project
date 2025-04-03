@@ -240,7 +240,7 @@ void runStep(Particle* d_particles[], int numParticles, float deltaTime, float g
             cudaMemset(d_gridCounters, 0, numCells * sizeof(int));
 
             // 1. Integration: update particle positions and velocities.
-            integrateParticlesKernel << <numBlocks_sim, threadsPerBlock_sim 0, simStream>> >
+            integrateParticlesKernel << <numBlocks_sim, threadsPerBlock_sim, 0, simStream>> >
                 (d_particles[simBuffer], numParticles, deltaTime, gravity, d_obstacles, numObstacles);
 
             // 3. Build the uniform grid.

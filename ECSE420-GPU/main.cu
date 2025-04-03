@@ -32,7 +32,7 @@ void saveMetrics(const char* filename, int time_ms, int num_particles, int size_
 
 int main(int argc, char **argv) {
     // Set the number of particles.
-    const int numParticles = 128;
+    const int numParticles = 1024;
     size_t particlesSize = numParticles * sizeof(Particle);
 
     // Allocate and initialize host particle data.
@@ -52,7 +52,13 @@ int main(int argc, char **argv) {
 
     Obstacle h_obstacles[] = {
     { make_float2(400.0f, 300.0f), 40.0f },
-    { make_float2(200.0f, 500.0f), 25.0f }
+    { make_float2(200.0f, 500.0f), 25.0f },
+    { make_float2(700.0f, 400.0f), 15.0f },
+    { make_float2(500.0f, 300.0f), 35.0f },
+    { make_float2(100.0f, 50.0f), 10.0f },
+    { make_float2(400.0f, 200.0f), 15.0f },
+    { make_float2(600.0f, 500.0f), 25.0f },
+    { make_float2(700.0f, 200.0f), 5.0f }
     };
     int numObstacles = sizeof(h_obstacles) / sizeof(Obstacle);
 
