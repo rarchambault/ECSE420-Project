@@ -106,3 +106,47 @@ void ResolveParticleCollisions(Particle* particles) {
         }
     }
 }
+
+// Resolve collision between particles
+void ResolveParticleCollision(Particle* particle1, Particle* particle2) {
+    // Distance and direction between particles
+    float dx = particle2->position.x - particle1->position.x;
+    float dy = particle2->position.y - particle1->position.y;
+    float distance = sqrtf(dx * dx + dy * dy);
+    float minDist = particle1->radius + particle2->radius;
+
+    if (distance < minDist) {
+        // Handle perfect overlap (distance == 0)
+        if (distance == 0.0f) {
+            dx = (float)(rand() % 2 ? 1 : -1) * 0.01f; // Small random nudge
+            dy = (float)(rand() % 2 ? 1 : -1) * 0.01f;
+            distance = sqrtf(dx * dx + dy * dy);
+        }
+
+        // Resolve overlap by pushing particles apart
+        float overlap = (minDist - distance) / 2.0f;
+        float normX = dx / distance;
+        float normY = dy / distance;
+
+        particle1->position.x -= overlap * normX;
+        particle1->position.y -= overlap * normY;
+        particle2->position.x += overlap * normX;
+        particle2->position.y += overlap * normY;
+
+        // Relative velocity in normal direction
+        float relativeVelX = particle2->velocity.x - particle1->velocity.x;
+        float relativeVelY = particle2->velocity.y - particle1->velocity.y;
+        float dotProduct = (relativeVelX * normX) + (relativeVelY * normY);
+
+        if (dotProduct > 0) return; // Prevents double collision handling
+
+        // Inelastic collision
+        float impulse = dotProduct * DAMPING_FACTOR;
+
+        // Apply impulse to both particles
+        particle1->velocity.x += impulse * normX;
+        particle1->velocity.y += impulse * normY;
+        particle2->velocity.x -= impulse * normX;
+        particle2->velocity.y -= impulse * normY;
+    }
+}

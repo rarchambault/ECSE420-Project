@@ -15,6 +15,7 @@ typedef struct {
 } Obstacle;
 
 void ResolveParticleCollisions(Particle* particles);
+void ResolveParticleCollision(Particle* particle1, Particle* particle2);
 void ResolveBoundaryCollisions(Particle* particles);
 void ResolveObstacleCollisions(Particle* particles, Obstacle* obstacles);
 
