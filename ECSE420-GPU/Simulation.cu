@@ -71,6 +71,7 @@ __global__ void integrateParticlesKernel(Particle* particles, int numParticles, 
 // Grid building kernel: Bins particles into a uniform grid using atomic operations.
 __global__ void buildGridKernel(Particle* particles, int numParticles,
     int* gridCounters, int* gridIndices) {
+
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles) return;
 
@@ -97,13 +98,14 @@ void runSimulationStep(Particle* d_particles, int numParticles, float deltaTime,
     int threadsPerBlock = 256;
     int numBlocks = (numParticles + threadsPerBlock - 1) / threadsPerBlock;
 
+    // 2. Reset the grid counters.
+    int numCells = GRID_WIDTH * GRID_HEIGHT;
+
+    cudaMemset(d_gridCounters, 0, numCells * sizeof(int));
+
     // 1. Integration: update particle positions and velocities.
     integrateParticlesKernel << <numBlocks, threadsPerBlock >> > (
         d_particles, numParticles, deltaTime, gravity, obstacles, numObstacles);
-
-    // 2. Reset the grid counters.
-    int numCells = GRID_WIDTH * GRID_HEIGHT;
-    cudaMemset(d_gridCounters, 0, numCells * sizeof(int));
 
     // 3. Build the uniform grid.
     buildGridKernel << <numBlocks, threadsPerBlock >> > (d_particles, numParticles, d_gridCounters, d_gridIndices);

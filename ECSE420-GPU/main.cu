@@ -6,7 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
-//#include "raylib.h"
+#include <chrono>
 #include "../build/external/raylib-master/src/raylib.h"
 
 void saveFramePPM(const char* filename, unsigned char* framebuffer, int width, int height) {
@@ -24,7 +24,14 @@ void saveFramePPM(const char* filename, unsigned char* framebuffer, int width, i
     ofs.close();
 }
 
-int main() {
+void saveMetrics(const char* filename, int time_ms, int num_particles, int size_particles, int num_obstacles) {
+    std::ofstream file;
+    file.open(filename, std::ios::out | std::ios::app);
+    file << time_ms << "," << num_particles << "," << size_particles << "," << num_obstacles << std::endl;
+    file.close();
+}
+
+int main(int argc, char **argv) {
     // Set the number of particles.
     const int numParticles = 128;
     size_t particlesSize = numParticles * sizeof(Particle);
@@ -82,6 +89,8 @@ int main() {
     image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
     Texture2D texture = LoadTextureFromImage(image);
 
+    auto begin = std::chrono::high_resolution_clock::now();
+
     for (int frame = 0; frame < numFrames; frame++) {
         float deltaTime = 0.016f; // ~60 fps
 
@@ -104,6 +113,13 @@ int main() {
         DrawTexture(texture, 0, 0, WHITE);
         EndDrawing();
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+
+    std::cout << "ELAPSED TIME :: " << elapsed.count() << " SIZE :: "<< h_particles[0].radius << std::endl;
+
+    saveMetrics("test_gpu.csv", elapsed.count() * 1e-6, numParticles, h_particles[0].radius, numObstacles);
 
     // Clean up Raylib texture.
     UnloadTexture(texture);
