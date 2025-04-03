@@ -22,7 +22,7 @@ extern "C" {
     } Obstacle;
 
 
-    void runCollisionStep(Particle* d_particles, int* d_gridCounters, int* d_gridIndices, int numParticles);
+
 
 #ifdef __cplusplus
 }

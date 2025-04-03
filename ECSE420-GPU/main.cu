@@ -1,5 +1,4 @@
-#include "Simulation.cuh"
-#include "Render.cuh"
+#include "Logic.cuh"
 #include "Constants.cuh"
 #include "Collisions.cuh"
 #include <cuda_runtime.h>
@@ -37,12 +36,18 @@ int main(int argc, char **argv) {
     size_t particlesSize = numParticles * sizeof(Particle);
 
     // Allocate and initialize host particle data.
-    Particle* h_particles = new Particle[numParticles];
+    Particle* h_particles0 = new Particle[numParticles];
+    Particle* h_particles1 = new Particle[numParticles];
     for (int i = 0; i < numParticles; i++) {
-        h_particles[i].position = make_float2(rand() % WINDOW_WIDTH, rand() % WINDOW_HEIGHT);
-        h_particles[i].velocity = make_float2(((rand() % 200) / 100.0f) - 1.0f,
+        h_particles0[i].position = make_float2(rand() % WINDOW_WIDTH, rand() % WINDOW_HEIGHT);
+        h_particles0[i].velocity = make_float2(((rand() % 200) / 100.0f) - 1.0f,
             ((rand() % 200) / 100.0f) - 1.0f);
-        h_particles[i].radius = PARTICLE_RADIUS;
+        h_particles0[i].radius = PARTICLE_RADIUS;
+
+        h_particles1[i].position = make_float2(rand() % WINDOW_WIDTH, rand() % WINDOW_HEIGHT);
+        h_particles1[i].velocity = make_float2(((rand() % 200) / 100.0f) - 1.0f,
+            ((rand() % 200) / 100.0f) - 1.0f);
+        h_particles1[i].radius = PARTICLE_RADIUS;
     }
 
     Obstacle h_obstacles[] = {
@@ -56,9 +61,11 @@ int main(int argc, char **argv) {
     cudaMemcpy(d_obstacles, h_obstacles, sizeof(h_obstacles), cudaMemcpyHostToDevice);
 
     // Allocate device memory for particles.
-    Particle* d_particles;
-    cudaMalloc(&d_particles, particlesSize);
-    cudaMemcpy(d_particles, h_particles, particlesSize, cudaMemcpyHostToDevice);
+    Particle* d_particles[2];
+    cudaMalloc(&d_particles[0], particlesSize);
+    cudaMalloc(&d_particles[1], particlesSize);
+    cudaMemcpy(d_particles[0], h_particles0, particlesSize, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_particles[1], h_particles1, particlesSize, cudaMemcpyHostToDevice);
 
     // Allocate device memory for grid arrays.
     int numCells = GRID_WIDTH * GRID_HEIGHT;
@@ -91,16 +98,32 @@ int main(int argc, char **argv) {
 
     auto begin = std::chrono::high_resolution_clock::now();
 
+    cudaStream_t simStream;
+    cudaStream_t renderStream;
+
+    cudaStreamCreate(&simStream);
+    cudaStreamCreate(&renderStream);
+
+    cudaEvent_t simEvent;
+    cudaEventCreate(&simEvent);
+
+    int currentBuffer = 0;
+
     for (int frame = 0; frame < numFrames; frame++) {
         float deltaTime = 0.016f; // ~60 fps
+        int simBuffer = currentBuffer;
+        int renderBuffer = 1 - currentBuffer;
 
-        // Run one simulation step: integration, grid building, and collision resolution.
-        runSimulationStep(d_particles, numParticles, deltaTime, GRAVITY, d_gridCounters, d_gridIndices, d_obstacles, numObstacles);
+        runStep(d_particles, numParticles, deltaTime, GRAVITY, d_gridCounters, d_gridIndices, d_obstacles,
+            numObstacles, d_framebuffer, width, height, frame, simStream, renderStream, simEvent, simBuffer, renderBuffer);
 
-        // Render particles into the device framebuffer.
-        renderParticles(d_particles, numParticles,
-            d_obstacles, numObstacles,
-            d_framebuffer, width, height, frame);
+        //// Run one simulation step: integration, grid building, and collision resolution.
+        //runSimulationStep(d_particles, numParticles, deltaTime, GRAVITY, d_gridCounters, d_gridIndices, d_obstacles, numObstacles);
+
+        //// Render particles into the device framebuffer.
+        //renderParticles(d_particles, numParticles,
+        //    d_obstacles, numObstacles,
+        //    d_framebuffer, width, height, frame);
 
         // Copy the framebuffer from device to host.
         cudaMemcpy(h_framebuffer, d_framebuffer, framebufferSize, cudaMemcpyDeviceToHost);
@@ -112,14 +135,16 @@ int main(int argc, char **argv) {
         ClearBackground(RAYWHITE);
         DrawTexture(texture, 0, 0, WHITE);
         EndDrawing();
+
+        currentBuffer = renderBuffer;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
 
-    std::cout << "ELAPSED TIME :: " << elapsed.count() << " SIZE :: "<< h_particles[0].radius << std::endl;
+    std::cout << "ELAPSED TIME :: " << elapsed.count() << " SIZE :: "<< h_particles0[0].radius << std::endl;
 
-    saveMetrics("test_gpu.csv", elapsed.count() * 1e-6, numParticles, h_particles[0].radius, numObstacles);
+    saveMetrics("test_gpu.csv", elapsed.count() * 1e-6, numParticles, h_particles0[0].radius, numObstacles);
 
     // Clean up Raylib texture.
     UnloadTexture(texture);
@@ -131,7 +156,8 @@ int main(int argc, char **argv) {
     cudaFree(d_framebuffer);
 
     // Clean up host memory.
-    delete[] h_particles;
+    delete[] h_particles0;
+    delete[] h_particles1;
     delete[] h_framebuffer;
 
     return 0;

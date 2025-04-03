@@ -79,15 +79,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="Collisions.cu" />
+    <CudaCompile Include="Logic.cu" />
     <CudaCompile Include="main.cu" />
-    <CudaCompile Include="Render.cu" />
-    <CudaCompile Include="Simulation.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Collisions.cuh" />
     <ClInclude Include="Constants.cuh" />
-    <ClInclude Include="Render.cuh" />
-    <ClInclude Include="Simulation.cuh" />
+    <ClInclude Include="Logic.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\build\build_files\raylib.vcxproj">
