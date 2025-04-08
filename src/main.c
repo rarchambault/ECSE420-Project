@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdio.h>
 
-ExecutionMode executionMode = EXECUTION_OPENCL_GPU;
+ExecutionMode executionMode = EXECUTION_SEQUENTIAL;
 
 int main() {
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -15,7 +15,7 @@ int main() {
     InitRenderer();
 
     int frame = 0;
-    int maxFrame = 500;
+    int maxFrame = 200;
 
     float startTime = GetTime();
 

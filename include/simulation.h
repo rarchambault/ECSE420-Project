@@ -8,8 +8,8 @@
 #define NB_OBSTACLES 6
 
 #define NUM_THREADS_CPU 8
-#define GRID_WIDTH 80 // Number of grid cells across the window's width
-#define GRID_HEIGHT 60 // Number of grid cells across the window's height
+#define GRID_WIDTH 4 // Number of grid cells across the window's width
+#define GRID_HEIGHT 4 // Number of grid cells across the window's height
 #define GRID_CELL_WIDTH (WINDOW_WIDTH / GRID_WIDTH) // Size of each grid cell in pixels
 #define GRID_CELL_HEIGHT (WINDOW_HEIGHT / GRID_HEIGHT) // Size of each grid cell in pixels
 
