@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdio.h>
 
-ExecutionMode executionMode = EXECUTION_CPU_THREADING;
+ExecutionMode executionMode = EXECUTION_SEQUENTIAL;
 
 int main() {
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);

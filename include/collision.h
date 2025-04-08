@@ -7,6 +7,7 @@ typedef struct {
     Vector2 position;
     Vector2 velocity;
     float radius;
+    float _padding; // Padding to align the structure size to 24 bytes
 } Particle;
 
 typedef struct {
