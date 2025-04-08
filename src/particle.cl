@@ -1,6 +1,4 @@
-﻿#define MAX_PARTICLES_PER_CELL 256
-
-typedef struct {
+﻿typedef struct {
 	float x;
 	float y;
 } Vector2;
@@ -25,7 +23,7 @@ float vector2_distance(Vector2 a, Vector2 b) {
 
 typedef struct {
     int count;
-    int indices[MAX_PARTICLES_PER_CELL];
+    int indices[256];
 } GridCellCL;
 
 int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2) {

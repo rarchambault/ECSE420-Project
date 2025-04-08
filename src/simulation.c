@@ -23,7 +23,8 @@ typedef struct {
     int indices[MAX_PARTICLES_PER_CELL];
 } GridCellCL;
 
-static GridCell grid[GRID_WIDTH][GRID_HEIGHT]; // The simulation grid
+static GridCell grid[GRID_WIDTH][GRID_HEIGHT]; // The simulation grid for CPU threading
+static GridCellCL gridCL[GRID_WIDTH][GRID_HEIGHT]; // The simulation grid for OpenCL
 static Particle particles[NB_PARTICLES];
 static Obstacle obstacles[NB_OBSTACLES] = {
     {100, 150, 30.0f},
@@ -308,30 +309,36 @@ void UpdateSimulationOpenCL() {
     clEnqueueReadBuffer(queue, particleBuffer, CL_TRUE, 0, sizeof(Particle) * NB_PARTICLES, particles, 0, NULL, NULL);
 
     // Handle particle collisions
-    // Assign particles to grid cells
-    size_t gridSize = GRID_WIDTH * GRID_HEIGHT;
-    GridCellCL* grid = (GridCellCL*)calloc(gridSize, sizeof(GridCellCL));
-    if (grid == NULL) {
-        // Print error and exit if memory allocation fails
-        fprintf(stderr, "Failed to allocate memory for the grid.\n");
-        exit(1);
+    // Reset the grid cell counts to zero
+    for (int x = 0; x < GRID_WIDTH; x++) {
+        for (int y = 0; y < GRID_HEIGHT; y++) {
+            gridCL[x][y].count = 0;  // Reset count of particles in each cell
+        }
     }
 
+    // Assign particles to grid cells
     for (int i = 0; i < NB_PARTICLES; i++) {
         int gx = particles[i].position.x / GRID_CELL_WIDTH;
         int gy = particles[i].position.y / GRID_CELL_HEIGHT;
-        int cellIndex = gy * GRID_WIDTH + gx;
 
-        GridCellCL* cell = &grid[cellIndex];
-        if (cell->count < MAX_PARTICLES_PER_CELL) {
-            cell->indices[cell->count++] = i;
+        if (gx < 0) gx = 0;
+        if (gx >= GRID_WIDTH) gx = GRID_WIDTH - 1;
+        if (gy < 0) gy = 0;
+        if (gy >= GRID_HEIGHT) gy = GRID_HEIGHT - 1;
+
+        int gridSize = GRID_WIDTH * GRID_HEIGHT;
+
+        GridCellCL cell = gridCL[gx][gy];
+        if (cell.count < MAX_PARTICLES_PER_CELL) {
+            cell.indices[cell.count++] = i;
+            gridCL[gx][gy] = cell;
         }
     }
 
     // Write the grid to the OpenCL buffer
-    err = clEnqueueWriteBuffer(queue, gridBuffer, CL_TRUE, 0, sizeof(GridCellCL) * gridSize, grid, 0, NULL, NULL);
+    size_t gridSize = GRID_WIDTH * GRID_HEIGHT;
+    err = clEnqueueWriteBuffer(queue, gridBuffer, CL_TRUE, 0, sizeof(GridCellCL) * gridSize, gridCL, 0, NULL, NULL);
 
-    free(grid);
 
     // Launch the kernel to handle particle collisions
     err = clEnqueueNDRangeKernel(queue, kernel2, 1, NULL, &gridSize, NULL, 0, NULL, NULL);
