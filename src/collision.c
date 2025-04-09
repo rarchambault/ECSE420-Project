@@ -3,7 +3,7 @@
 #include "simulation.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <raymath.h>
+#include <math.h>
 
 float vector2_distance(Vector2 a, Vector2 b) {
     float dx = b.x - a.x;
@@ -130,8 +130,8 @@ void ResolveParticleCollision(Particle* particle1, Particle* particle2) {
     if (distance < minDist) {
         // Handle perfect overlap (distance == 0)
         if (distance == 0.0f) {
-            dx = (float)(rand() % 2 ? 1 : -1) * 0.01f; // Small random nudge
-            dy = (float)(rand() % 2 ? 1 : -1) * 0.01f;
+            dx = 0.005f;
+            dy = 0.005f;
             distance = sqrtf(dx * dx + dy * dy);
         }
 
