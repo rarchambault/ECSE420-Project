@@ -1,9 +1,11 @@
 #include "simulation.h"
 #include "constants.h"
+#include "particle.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <CL/cl.h>
+#include <cuda_runtime.h>
 
 pthread_t threads[NUM_THREADS_CPU];
 
@@ -13,18 +15,8 @@ typedef struct {
 
 CpuThreadData threadData[NUM_THREADS_CPU];
 
-typedef struct {
-    int count;
-    Particle* particles[NB_PARTICLES]; // Stores pointers to particles in this cell
-} GridCell;
-
-typedef struct {
-    int count;
-    int indices[MAX_PARTICLES_PER_CELL];
-} GridCellCL;
-
 static GridCell grid[GRID_WIDTH][GRID_HEIGHT]; // The simulation grid for CPU threading
-static GridCellCL gridCL[GRID_WIDTH][GRID_HEIGHT]; // The simulation grid for OpenCL
+static GridCellGPU gridGPU[GRID_WIDTH][GRID_HEIGHT]; // The simulation grid for OpenCL
 static Particle particles[NB_PARTICLES];
 static Obstacle obstacles[NB_OBSTACLES] = {
     {100, 150, 30.0f},
@@ -45,6 +37,10 @@ cl_kernel kernel2;
 cl_int err;
 cl_mem particleBuffer;
 cl_mem gridBuffer;
+
+Particle* d_particles;
+Obstacle* d_obstacles;
+GridCellGPU* d_grid;
 
 void InitSimulation() {
     for (int i = 0; i < NB_PARTICLES; i++) {
@@ -177,6 +173,46 @@ void InitSimulation() {
         }
 
         printf("OpenCL initialization completed successfully.\n");
+        
+	} else if (executionMode == EXECUTION_CUDA_GPU) {
+        cudaError_t err;
+
+        err = cudaMalloc(&d_particles, sizeof(Particle) * NB_PARTICLES);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "cudaMalloc failed for particles: %s\n", cudaGetErrorString(err));
+            exit(1);
+        }
+
+        // 1. Allocate device memory for obstacles
+        err = cudaMalloc(&d_obstacles, sizeof(Obstacle) * NB_OBSTACLES);
+        if (err != cudaSuccess) {
+			fprintf(stderr, "cudaMalloc failed for obstacles: %s\n", cudaGetErrorString(err));
+			exit(1);
+		}
+
+        // 2. Allocate device memory for grid
+        size_t gridSize = GRID_WIDTH * GRID_HEIGHT;
+        err = cudaMalloc(&d_grid, sizeof(GridCellGPU) * gridSize);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "cudaMalloc failed for grid: %s\n", cudaGetErrorString(err));
+            exit(1);
+        }
+
+        // 3. Copy initial particle data to device
+        err = cudaMemcpy(d_particles, particles, sizeof(Particle) * NB_PARTICLES, cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "cudaMemcpy failed for particles: %s\n", cudaGetErrorString(err));
+            exit(1);
+        }
+
+        // 4. Copy initial obstacle data to device
+        err = cudaMemcpy(d_obstacles, obstacles, sizeof(Obstacle) * NB_OBSTACLES, cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+			fprintf(stderr, "cudaMemcpy failed for obstacles: %s\n", cudaGetErrorString(err));
+			exit(1);
+		}
+
+        printf("CUDA GPU memory initialized.\n");
 	}
 }
 
@@ -312,7 +348,7 @@ void UpdateSimulationOpenCL() {
     // Reset the grid cell counts to zero
     for (int x = 0; x < GRID_WIDTH; x++) {
         for (int y = 0; y < GRID_HEIGHT; y++) {
-            gridCL[x][y].count = 0;  // Reset count of particles in each cell
+            gridGPU[x][y].count = 0;  // Reset count of particles in each cell
         }
     }
 
@@ -328,16 +364,16 @@ void UpdateSimulationOpenCL() {
 
         int gridSize = GRID_WIDTH * GRID_HEIGHT;
 
-        GridCellCL cell = gridCL[gx][gy];
+        GridCellGPU cell = gridGPU[gx][gy];
         if (cell.count < MAX_PARTICLES_PER_CELL) {
             cell.indices[cell.count++] = i;
-            gridCL[gx][gy] = cell;
+            gridGPU[gx][gy] = cell;
         }
     }
 
     // Write the grid to the OpenCL buffer
     size_t gridSize = GRID_WIDTH * GRID_HEIGHT;
-    err = clEnqueueWriteBuffer(queue, gridBuffer, CL_TRUE, 0, sizeof(GridCellCL) * gridSize, gridCL, 0, NULL, NULL);
+    err = clEnqueueWriteBuffer(queue, gridBuffer, CL_TRUE, 0, sizeof(GridCellGPU) * gridSize, gridGPU, 0, NULL, NULL);
 
 
     // Launch the kernel to handle particle collisions
@@ -357,6 +393,9 @@ void UpdateSimulation() {
     case EXECUTION_OPENCL_GPU:
         UpdateSimulationOpenCL();
 		break;
+    case EXECUTION_CUDA_GPU:
+        UpdateSimulationCuda(particles, gridGPU, d_particles, d_obstacles, d_grid);
+        break;
     case EXECUTION_SEQUENTIAL:
         UpdateSimulation_Sequential();
         break;
@@ -382,5 +421,8 @@ void CleanupSimulation() {
 		clReleaseProgram(program);
 		clReleaseCommandQueue(queue);
 		clReleaseContext(context);
+	} else if (executionMode == EXECUTION_CUDA_GPU) {
+		cudaFree(d_particles);
+		cudaFree(d_grid);
 	}
 }

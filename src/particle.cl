@@ -15,16 +15,16 @@ typedef struct {
 	float radius;
 } Obstacle;
 
+typedef struct {
+    int count;
+    int indices[256];
+} GridCellCL;
+
 float vector2_distance(Vector2 a, Vector2 b) {
     float dx = b.x - a.x;
     float dy = b.y - a.y;
     return sqrt(dx * dx + dy * dy);
 }
-
-typedef struct {
-    int count;
-    int indices[256];
-} GridCellCL;
 
 int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2) {
     return vector2_distance(center1, center2) <= (radius1 + radius2);
@@ -168,8 +168,9 @@ __kernel void ProcessGridCollisions(__global Particle* particles,
 		}
 
         // Check for collisions with neighboring cells
-        for (int dx = -1; dx <= 1; ++dx) {
-			for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = 0; dx <= 1; dx++) {
+            for (int dy = 0; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue; // skip self
 				int neighborX = x + dx;
 				int neighborY = y + dy;
 
