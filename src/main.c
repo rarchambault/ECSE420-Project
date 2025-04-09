@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdio.h>
 
-ExecutionMode executionMode = EXECUTION_GPU_CUDA;
+ExecutionMode executionMode = EXECUTION_CPU_GRAPHICS_OPENCL;
 
 int main() {
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);

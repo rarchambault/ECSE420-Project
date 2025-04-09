@@ -8,7 +8,7 @@
 float vector2_distance(Vector2 a, Vector2 b) {
     float dx = b.x - a.x;
     float dy = b.y - a.y;
-    return sqrt(dx * dx + dy * dy);
+    return sqrtf(dx * dx + dy * dy);
 }
 
 int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2) {

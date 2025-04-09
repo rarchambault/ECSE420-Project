@@ -36,9 +36,10 @@ typedef struct {
     int indices[MAX_PARTICLES_PER_CELL];
 } GridCellGPU;
 
-typedef struct {
-    int threadIndex;
-} CpuThreadData;
+extern GridCell grid[GRID_WIDTH][GRID_HEIGHT];
+extern GridCellGPU gridGPU[GRID_WIDTH][GRID_HEIGHT];
+extern Particle particles[NB_PARTICLES];
+extern Obstacle obstacles[NB_OBSTACLES];
 
 void InitSimulation();
 void UpdateSimulation();
