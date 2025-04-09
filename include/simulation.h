@@ -18,10 +18,21 @@
 typedef enum {
     EXECUTION_SEQUENTIAL,
     EXECUTION_CPU_THREADING,
-    EXECUTION_OPENCL_GPU
+    EXECUTION_OPENCL_GPU,
+    EXECUTION_CUDA_GPU
 } ExecutionMode;
 
 extern ExecutionMode executionMode;
+
+typedef struct {
+    int count;
+    Particle* particles[NB_PARTICLES]; // Stores pointers to particles in this cell
+} GridCell;
+
+typedef struct {
+    int count;
+    int indices[MAX_PARTICLES_PER_CELL];
+} GridCellGPU;
 
 void InitSimulation();
 void UpdateSimulation();
