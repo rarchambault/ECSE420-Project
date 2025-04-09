@@ -38,7 +38,7 @@ __kernel void UpdateParticles(__global Particle* particles, __global Obstacle* o
 
     // Get the global ID of the current thread and retrieve the particle
     int i = get_global_id(0);
-    Particle* particle = &particles[i];
+    __global Particle* particle = &particles[i];
 
     // Update particle velocity with gravity and position
     particle->velocity.y += GRAVITY;
@@ -65,7 +65,7 @@ __kernel void UpdateParticles(__global Particle* particles, __global Obstacle* o
 
     // Resolve collisions with obstacles
     for (int j = 0; j < NUM_OBSTACLES; j++) {
-        Obstacle* obstacle = &obstacles[j];
+        __global Obstacle* obstacle = &obstacles[j];
 
         if (check_collision_circles(particle->position, particle->radius, obstacle->position, obstacle->radius)) {
 
@@ -107,8 +107,8 @@ void ResolveCollision(__global Particle* particles, int i, int j, float DAMPING_
 
         // Handle perfect overlap
         if (distance < 1e-6f) {
-            dx = 0.01f;
-            dy = 0.01f;
+            dx = 0.005f;
+            dy = 0.005f;
             distance = sqrt(dx * dx + dy * dy);
         }
 
@@ -142,55 +142,111 @@ void ResolveCollision(__global Particle* particles, int i, int j, float DAMPING_
 
 __kernel void ProcessGridCollisions(__global Particle* particles,
                                     __global GridCellCL* grid,
-                                    const int gridWidth,
-                                    const int gridHeight,
+                                    const int GRID_WIDTH,
+                                    const int GRID_HEIGHT,
+                                    const float GRID_CELL_WIDTH,
+                                    const float GRID_CELL_HEIGHT,
                                     const float DAMPING_FACTOR) {
 
     int cellId = get_global_id(0);
-    int x = cellId % gridWidth;
-    int y = cellId / gridWidth;
+    if (cellId >= GRID_WIDTH * GRID_HEIGHT) return;
+
+    int x = cellId % GRID_WIDTH;
+    int y = cellId / GRID_WIDTH;
 
     GridCellCL cell = grid[cellId];
     int particleCount = cell.count;
     if (particleCount == 0) return;
-    // Iterate over particles in the cell
-    for (int i = 0; i < particleCount; ++i) {
-		int particleIndexA = cell.indices[i];
-		Particle pA = particles[particleIndexA];
 
-		// Check for collisions with other particles in the same cell
-		for (int j = i + 1; j < particleCount; ++j) {
-			int particleIndexB = cell.indices[j];
-			Particle pB = particles[particleIndexB];
+    // Check for collisions 
+    for (int i = 0; i < particleCount; i++) {
 
-			// Call your collision logic here between pA and pB
-			ResolveCollision(particles, particleIndexA, particleIndexB, DAMPING_FACTOR);
-		}
+        // Collision within the cell
+        for (int j = i + 1; j < particleCount; j++) {
+            ResolveCollision(particles, cell.indices[i], cell.indices[j], DAMPING_FACTOR);
+        }
+    }
 
-        // Check for collisions with neighboring cells
-        for (int dx = 0; dx <= 1; dx++) {
-            for (int dy = 0; dy <= 1; dy++) {
-                if (dx == 0 && dy == 0) continue; // skip self
-				int neighborX = x + dx;
-				int neighborY = y + dy;
+    // Check neighboring cells (right & bottom) only for particles near borders
 
-				// Check if the neighbor cell is within bounds
-				if (neighborX >= 0 && neighborX < gridWidth && neighborY >= 0 && neighborY < gridHeight) {
-					int neighborCellId = neighborY * gridWidth + neighborX;
-					GridCellCL neighborCell = grid[neighborCellId];
+    // Check right cell
+    if (x + 1 < GRID_WIDTH) {
+        int rightCellIndex = x + 1 + y * GRID_WIDTH;
+        GridCellCL rightCell = grid[rightCellIndex];
 
-					// Iterate over particles in the neighboring cell
-					for (int k = 0; k < neighborCell.count; ++k) {
-						int particleIndexB = neighborCell.indices[k];
-						Particle pB = particles[particleIndexB];
+        // Iterate over the particles in the current cell
+        for (int i = 0; i < particleCount; i++) {
+            int pAIndex = cell.indices[i];
+            Particle pA = particles[pAIndex];
 
-						// Call your collision logic here between pA and pB
-						ResolveCollision(particles, particleIndexA, particleIndexB, DAMPING_FACTOR);
-					}
-				}
+            // If the particle A in the current cell is near the boundary and could interact with particles in the right cell
+            if (pA.position.x + pA.radius > (x + 1) * GRID_CELL_WIDTH) {
+
+                // Iterate over particles in the right cell
+                for (int j = 0; j < rightCell.count; j++) {
+                    // Resolve collision between particles
+                    ResolveCollision(particles, pAIndex, rightCell.indices[j], DAMPING_FACTOR);
+                }
+            }
+        }
+	}
+
+    // Check bottom cell
+    if (y + 1 < GRID_HEIGHT) {
+        int bottomCellIndex = x + (y + 1) * GRID_WIDTH;
+		GridCellCL bottomCell = grid[bottomCellIndex];
+
+        // Iterate over the particles in the current cell
+        for (int i = 0; i < particleCount; i++) {
+            int pAIndex = cell.indices[i];
+            Particle pA = particles[pAIndex];
+
+			// If the particle in the current cell is near the boundary and could interact with particles in the bottom cell
+			if (pA.position.y + pA.radius > (y + 1) * GRID_CELL_HEIGHT) {
+
+                // Iterate over particles in the bottom cell
+                for (int j = 0; j < bottomCell.count; j++) {
+                    // Resolve collision between particles
+                    ResolveCollision(particles, pAIndex, bottomCell.indices[j], DAMPING_FACTOR);
+                }
 			}
 		}
-	}
+    }
 }
 
+__kernel void ResetGrid(__global GridCellCL* grid, const int GRID_WIDTH, const int GRID_HEIGHT) {
+    int idx = get_global_id(0);
 
+    if (idx >= GRID_WIDTH * GRID_HEIGHT) return;
+
+    grid[idx].count = 0;
+}
+
+__kernel void AssignParticlesToGrid(__global Particle* particles,
+                                    __global GridCellCL* grid,
+                                    const int NB_PARTICLES,
+                                    const int GRID_WIDTH,
+        				            const int GRID_HEIGHT,
+                                    const float GRID_CELL_WIDTH,
+                                    const float GRID_CELL_HEIGHT,
+                                    const int MAX_PARTICLES_PER_CELL) {
+    int idx = get_global_id(0);
+    if (idx >= NB_PARTICLES) return;
+
+    Particle p = particles[idx];
+
+    int gx = (int)(p.position.x / GRID_CELL_WIDTH);
+    int gy = (int)(p.position.y / GRID_CELL_HEIGHT);
+
+    // Clamp gx and gy
+    gx = max(0, min(gx, GRID_WIDTH - 1));
+    gy = max(0, min(gy, GRID_HEIGHT - 1));
+
+    int cellIndex = gy * GRID_WIDTH + gx;
+
+    // Atomically insert particle index
+    int insertPos = atomic_add(&grid[cellIndex].count, 1);
+    if (insertPos < MAX_PARTICLES_PER_CELL) {
+        grid[cellIndex].indices[insertPos] = idx;
+    }
+}

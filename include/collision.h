@@ -15,6 +15,9 @@ typedef struct {
     float radius;
 } Obstacle;
 
+
+float vector2_distance(Vector2 a, Vector2 b);
+int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2);
 void ResolveParticleCollisions(Particle* particles);
 void ResolveParticleCollision(Particle* particle1, Particle* particle2);
 void ResolveBoundaryCollisions(Particle* particles);

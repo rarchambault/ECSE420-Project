@@ -1,7 +1,19 @@
 #include "collision.h"
 #include "constants.h"
 #include "simulation.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <raymath.h>
+
+float vector2_distance(Vector2 a, Vector2 b) {
+    float dx = b.x - a.x;
+    float dy = b.y - a.y;
+    return sqrt(dx * dx + dy * dy);
+}
+
+int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2) {
+    return vector2_distance(center1, center2) <= (radius1 + radius2);
+}
 
 // Resolve collisions with boundaries
 void ResolveBoundaryCollisions(Particle* particle) {
@@ -28,7 +40,7 @@ void ResolveObstacleCollisions(Particle* particle, Obstacle* obstacles) {
     for (int j = 0; j < NB_OBSTACLES; j++) {
         Obstacle* obstacle = &obstacles[j];
 
-        if(CheckCollisionCircles(particle->position, particle->radius, obstacle->position, obstacle->radius)) {
+        if(check_collision_circles(particle->position, particle->radius, obstacle->position, obstacle->radius)) {
             
             float dx = particle->position.x - obstacle->position.x;
             float dy = particle->position.y - obstacle->position.y;
@@ -72,8 +84,8 @@ void ResolveParticleCollisions(Particle* particles) {
 
                 // Handle perfect overlap (distance == 0)
                 if (distance == 0.0f) {
-                    dx = (float)(rand() % 2 ? 1 : -1) * 0.01f; // Small random nudge
-                    dy = (float)(rand() % 2 ? 1 : -1) * 0.01f;
+                    dx = 0.005f;
+                    dy = 0.005f;
                     distance = sqrtf(dx * dx + dy * dy);
                 }
 

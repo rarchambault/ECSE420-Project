@@ -11,3 +11,5 @@
 
 #define GRAVITY 0.05f
 #define DAMPING_FACTOR 0.9f
+
+#define RANDOM_SEED 12345

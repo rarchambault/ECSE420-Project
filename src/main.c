@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdio.h>
 
-ExecutionMode executionMode = EXECUTION_SEQUENTIAL;
+ExecutionMode executionMode = EXECUTION_GPU_CUDA;
 
 int main() {
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -17,7 +17,7 @@ int main() {
     int frame = 0;
     int maxFrame = 200;
 
-    float startTime = GetTime();
+    double startTime = GetTime();
 
     while (!WindowShouldClose()) {
         if (frame >= maxFrame) {
@@ -31,8 +31,8 @@ int main() {
         frame++;
     }
 
-    float endTime = GetTime();
-    float elapsedTime = endTime - startTime;
+    double endTime = GetTime();
+    double elapsedTime = endTime - startTime;
     printf("--- TIME: %.4f sec ---\n", elapsedTime);
 
     CleanupSimulation();

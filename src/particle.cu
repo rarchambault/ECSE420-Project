@@ -5,16 +5,17 @@
 #include <stdlib.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 #include <math.h>
 
-__device__ float vector2_distance(Vector2 a, Vector2 b) {
+__device__ float vector2_distance_device(Vector2 a, Vector2 b) {
     float dx = b.x - a.x;
     float dy = b.y - a.y;
     return sqrt(dx * dx + dy * dy);
 }
 
-__device__ int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2) {
-    return vector2_distance(center1, center2) <= (radius1 + radius2);
+__device__ int check_collision_circles_device(Vector2 center1, float radius1, Vector2 center2, float radius2) {
+    return vector2_distance_device(center1, center2) <= (radius1 + radius2);
 }
 
 __global__ void updateParticlesKernel(Particle* particles, Obstacle* obstacles) {
@@ -53,11 +54,11 @@ __global__ void updateParticlesKernel(Particle* particles, Obstacle* obstacles) 
     for (int j = 0; j < NB_OBSTACLES; j++) {
         Obstacle* obstacle = &obstacles[j];
 
-        if (check_collision_circles(particle->position, particle->radius, obstacle->position, obstacle->radius)) {
+        if (check_collision_circles_device(particle->position, particle->radius, obstacle->position, obstacle->radius)) {
 
             float dx = particle->position.x - obstacle->position.x;
             float dy = particle->position.y - obstacle->position.y;
-            float distance = sqrt(dx * dx + dy * dy);
+            float distance = sqrtf(dx * dx + dy * dy);
 
             // Resolve overlap by pushing the particle away from the obstacle
             float overlap = (particle->radius + obstacle->radius) - distance;
@@ -131,115 +132,128 @@ __global__ void ProcessGridCollisions(Particle* particles, GridCellGPU* grid) {
     // Calculate thread index in the grid (both block and thread index)
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // Ensure that we don't go out of bounds
     if (idx >= GRID_WIDTH * GRID_HEIGHT) return;
 
-    // Calculate x, y coordinates of the grid cell from the thread index
     int x = idx % GRID_WIDTH;
-    int y = idx / GRID_HEIGHT;
+    int y = idx / GRID_WIDTH;
 
-    // Access the grid cell
-    GridCellGPU* cell = &grid[idx];
-
-    int particleCount = cell->count;
+    GridCellGPU cell = grid[idx];
+    int particleCount = cell.count;
     if (particleCount == 0) return;
 
-    // Iterate over particles in the cell
-    for (int i = 0; i < particleCount; ++i) {
-        int particleIndexA = cell->indices[i];
+    // Check for collisions 
+    for (int i = 0; i < particleCount; i++) {
 
-        // Check for collisions with other particles in the same cell
-        for (int j = i + 1; j < particleCount; ++j) {
-            int particleIndexB = cell->indices[j];
-
-            // Call your collision logic here between pA and pB
-            ResolveCollision(particles, particleIndexA, particleIndexB);
+        // Collision within the cell
+        for (int j = i + 1; j < particleCount; j++) {
+            ResolveCollision(particles, cell.indices[i], cell.indices[j]);
         }
+    }
 
-        // Check for collisions with neighboring cells
-        for (int dx = 0; dx <= 1; dx++) {
-            for (int dy = 0; dy <= 1; dy++) {
-                if (dx == 0 && dy == 0) continue; // skip self
-                int neighborX = x + dx;
-                int neighborY = y + dy;
+    // Check neighboring cells (right & bottom) only for particles near borders
 
-                // Check if the neighbor cell is within bounds
-                if (neighborX >= 0 && neighborX < GRID_WIDTH && neighborY >= 0 && neighborY < GRID_HEIGHT) {
-                    int neighborCellId = neighborY * GRID_WIDTH + neighborX;
-                    GridCellGPU neighborCell = grid[neighborCellId];
+    // Check right cell
+    if (x + 1 < GRID_WIDTH) {
+        int rightCellIndex = x + 1 + y * GRID_WIDTH;
+        GridCellGPU rightCell = grid[rightCellIndex];
 
-                    // Iterate over particles in the neighboring cell
-                    for (int k = 0; k < neighborCell.count; ++k) {
-                        int particleIndexB = neighborCell.indices[k];
+        // Iterate over the particles in the current cell
+        for (int i = 0; i < particleCount; i++) {
+            int pAIndex = cell.indices[i];
+            Particle pA = particles[pAIndex];
 
-                        // Call your collision logic here between pA and pB
-                        ResolveCollision(particles, particleIndexA, particleIndexB);
-                    }
+            // If the particle A in the current cell is near the boundary and could interact with particles in the right cell
+            if (pA.position.x + pA.radius > (x + 1) * GRID_CELL_WIDTH) {
+
+                // Iterate over particles in the right cell
+                for (int j = 0; j < rightCell.count; j++) {
+                    // Resolve collision between particles
+                    ResolveCollision(particles, pAIndex, rightCell.indices[j]);
+                }
+            }
+        }
+    }
+
+    // Check bottom cell
+    if (y + 1 < GRID_HEIGHT) {
+        int bottomCellIndex = x + (y + 1) * GRID_WIDTH;
+        GridCellGPU bottomCell = grid[bottomCellIndex];
+
+        // Iterate over the particles in the current cell
+        for (int i = 0; i < particleCount; i++) {
+            int pAIndex = cell.indices[i];
+            Particle pA = particles[pAIndex];
+
+            // If the particle in the current cell is near the boundary and could interact with particles in the bottom cell
+            if (pA.position.y + pA.radius > (y + 1) * GRID_CELL_HEIGHT) {
+
+                // Iterate over particles in the bottom cell
+                for (int j = 0; j < bottomCell.count; j++) {
+                    // Resolve collision between particles
+                    ResolveCollision(particles, pAIndex, bottomCell.indices[j]);
                 }
             }
         }
     }
 }
 
+__global__ void ResetGrid(GridCellGPU* grid) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= GRID_WIDTH * GRID_HEIGHT) return;
+
+    grid[idx].count = 0;
+}
+
+__global__ void AssignParticlesToGrid(Particle* particles, GridCellGPU* grid) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= NB_PARTICLES) return;
+
+    Particle p = particles[idx];
+
+    int gx = (int)(p.position.x / GRID_CELL_WIDTH);
+    int gy = (int)(p.position.y / GRID_CELL_HEIGHT);
+
+    // Clamp
+    gx = max(0, min(gx, GRID_WIDTH - 1));
+    gy = max(0, min(gy, GRID_HEIGHT - 1));
+
+    int cellIndex = gy * GRID_WIDTH + gx;
+
+    // Atomically insert particle index
+    int insertPos = atomicAdd(&grid[cellIndex].count, 1);
+    if (insertPos < MAX_PARTICLES_PER_CELL) {
+        grid[cellIndex].indices[insertPos] = idx;
+    }
+    // Else: silently drop the particle if cell is full (can log for debugging)
+}
+
 void UpdateSimulationCuda(Particle* particles, GridCellGPU* grid, Particle* d_particles, Obstacle* d_obstacles, GridCellGPU* d_grid) {
     // Number of threads per block (you can adjust this for optimal performance)
     int blockSize = 256;
     // Number of blocks (we round up to ensure all particles are handled)
-    int numBlocks = (NB_PARTICLES + blockSize - 1) / blockSize;
+    int numBlocksParticles = (NB_PARTICLES + blockSize - 1) / blockSize;
 
     // Launch the kernel
-    updateParticlesKernel<<<numBlocks, blockSize>>>(d_particles, d_obstacles);
+    updateParticlesKernel<<<numBlocksParticles, blockSize>>>(d_particles, d_obstacles);
 
-    // Check for errors during kernel launch
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(err));
-        return;
-    }
+    int gridCellCount = GRID_WIDTH * GRID_HEIGHT;
+    int numBlocksGrid = (gridCellCount + blockSize - 1) / blockSize;
+    ResetGrid<<<numBlocksGrid, blockSize>>>(d_grid);
 
     // Synchronize the device to make sure the kernel has completed before moving on
+    cudaError_t err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA sync error: %s\n", cudaGetErrorString(err));
+    }
+
+    AssignParticlesToGrid<<<numBlocksParticles, blockSize>>>(d_particles, d_grid);
+
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA sync error: %s\n", cudaGetErrorString(err));
     }
 
-    cudaMemcpy(particles, d_particles, sizeof(Particle) * NB_PARTICLES, cudaMemcpyDeviceToHost);
-
-    // Handle particle collisions
-    // Reset the grid cell counts to zero
-    for (int x = 0; x < GRID_WIDTH; x++) {
-        for (int y = 0; y < GRID_HEIGHT; y++) {
-            GridCellGPU* cell = grid + (y * GRID_WIDTH + x);
-            cell->count = 0;
-        }
-    }
-
-    // Assign particles to grid cells
-    for (int i = 0; i < NB_PARTICLES; i++) {
-        int gx = particles[i].position.x / GRID_CELL_WIDTH;
-        int gy = particles[i].position.y / GRID_CELL_HEIGHT;
-
-        if (gx < 0) gx = 0;
-        if (gx >= GRID_WIDTH) gx = GRID_WIDTH - 1;
-        if (gy < 0) gy = 0;
-        if (gy >= GRID_HEIGHT) gy = GRID_HEIGHT - 1;
-
-        GridCellGPU* cell = grid + (gy * GRID_WIDTH + gx);
-        if (cell->count < MAX_PARTICLES_PER_CELL) {
-            cell->indices[cell->count++] = i;
-        }
-    }
-
-    // Copy grid to device
-    err = cudaMemcpy(d_grid, grid, sizeof(GridCellGPU) * GRID_WIDTH * GRID_HEIGHT, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess) {
-		fprintf(stderr, "CUDA memcpy error: %s\n", cudaGetErrorString(err));
-		return;
-	}
-
-    blockSize = 128;
-    numBlocks = (GRID_WIDTH * GRID_HEIGHT + blockSize - 1) / blockSize;
-    ProcessGridCollisions<<<numBlocks, blockSize>>>(d_particles, d_grid);
+    ProcessGridCollisions<<<numBlocksGrid, blockSize>>>(d_particles, d_grid);
 
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
