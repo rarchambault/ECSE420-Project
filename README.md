@@ -52,6 +52,11 @@ Upon downloading the project for the first time, run a setup script which will g
 
 ## Run the simulation
 
-1. In `main.c`, select your preferred execution mode:
-    - sdfsd
-    - 
+1. In `main.c`, select your preferred execution mode and set the `executionMode` variable:
+    - EXECUTION_SEQUENTIAL
+    - EXECUTION_CPU_THREADING
+    - EXECUTION_GPU_OPENCL
+    - EXECUTION_CPU_GRAPHICS_OPENCL
+    - EXECUTION_CPU_OPENCL
+    - EXECUTION_GPU_CUDA
+2. Build and run the code
