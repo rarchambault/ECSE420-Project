@@ -20,13 +20,13 @@ typedef struct {
     int indices[256];
 } GridCellCL;
 
-float vector2_distance(Vector2 a, Vector2 b) {
+inline float vector2_distance(Vector2 a, Vector2 b) {
     float dx = b.x - a.x;
     float dy = b.y - a.y;
     return sqrt(dx * dx + dy * dy);
 }
 
-int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2) {
+inline int check_collision_circles(Vector2 center1, float radius1, Vector2 center2, float radius2) {
     return vector2_distance(center1, center2) <= (radius1 + radius2);
 }
 
@@ -248,5 +248,9 @@ __kernel void AssignParticlesToGrid(__global Particle* particles,
     int insertPos = atomic_add(&grid[cellIndex].count, 1);
     if (insertPos < MAX_PARTICLES_PER_CELL) {
         grid[cellIndex].indices[insertPos] = idx;
+    }
+    else
+    {
+        printf("Grid cell overflow at cell (%d, %d) for particle %d\n", gx, gy, idx);
     }
 }

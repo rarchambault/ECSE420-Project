@@ -4,7 +4,7 @@
 #include "collision.h"
 #include <pthread.h>
 
-#define NB_PARTICLES 6000
+#define NB_PARTICLES 5000
 #define NB_OBSTACLES 6
 
 #define NUM_THREADS_CPU 8
@@ -13,7 +13,7 @@
 #define GRID_CELL_WIDTH (WINDOW_WIDTH / GRID_WIDTH) // Size of each grid cell in pixels
 #define GRID_CELL_HEIGHT (WINDOW_HEIGHT / GRID_HEIGHT) // Size of each grid cell in pixels
 
-#define MAX_PARTICLES_PER_CELL 256
+#define MAX_PARTICLES_PER_CELL 1024
 
 typedef enum {
     EXECUTION_SEQUENTIAL,

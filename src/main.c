@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdio.h>
 
-ExecutionMode executionMode = EXECUTION_CPU_THREADING;
+ExecutionMode executionMode = EXECUTION_GPU_OPENCL;
 
 int main() {
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -15,14 +15,11 @@ int main() {
     InitRenderer();
 
     int frame = 0;
-    int maxFrame = 1000;
+    int maxFrame = 200;
 
-    double startTime = GetTime();
+    clock_t startTime = clock();
 
-    while (!WindowShouldClose()) {
-        if (frame >= maxFrame) {
-			break;
-		}
+    while (frame < maxFrame) {
 
         UpdateSimulation();
 
@@ -31,10 +28,10 @@ int main() {
         frame++;
     }
 
-    double endTime = GetTime();
-    double elapsedTime = endTime - startTime;
+    clock_t endTime = clock();
+    double elapsedTime = (double)(endTime - startTime) / CLOCKS_PER_SEC;
     printf("--- TIME: %.4f sec ---\n", elapsedTime);
-
+    
     CleanupSimulation();
     CleanupRenderer();
     CloseWindow();

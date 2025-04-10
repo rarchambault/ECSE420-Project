@@ -98,17 +98,6 @@ void InitSimulation() {
 			exit(1);
 		}
 
-        // Print all devices in the platform
-        cl_uint numDevices;
-        clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
-        cl_device_id devices[10];
-        clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
-        for (cl_uint i = 0; i < numDevices; i++) {
-			char deviceName[128];
-			clGetDeviceInfo(devices[i], CL_DEVICE_NAME, sizeof(deviceName), deviceName, NULL);
-			printf("Device %d: %s\n", i, deviceName);
-		}
-
         // Set OpenCL device
         cl_device_type deviceType = CL_DEVICE_TYPE_GPU;
         if (executionMode == EXECUTION_CPU_OPENCL) deviceType = CL_DEVICE_TYPE_CPU;

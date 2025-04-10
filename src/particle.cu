@@ -223,8 +223,10 @@ __global__ void AssignParticlesToGrid(Particle* particles, GridCellGPU* grid) {
     int insertPos = atomicAdd(&grid[cellIndex].count, 1);
     if (insertPos < MAX_PARTICLES_PER_CELL) {
         grid[cellIndex].indices[insertPos] = idx;
-    }
-    // Else: silently drop the particle if cell is full (can log for debugging)
+    } else {
+		printf("Warning: Particle %d exceeds max particles per cell in grid cell (%d, %d)\n", idx, gx, gy);
+	}
+    
 }
 
 void UpdateSimulationCuda(Particle* particles, GridCellGPU* grid, Particle* d_particles, Obstacle* d_obstacles, GridCellGPU* d_grid) {
